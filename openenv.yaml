@@ -1,0 +1,205 @@
+---
+# openenv.yaml — Environment manifest for OpenEnv spec compliance
+# Validated by: openenv validate
+
+name: btc-trading-env
+version: "1.0.0"
+description: >
+  Bitcoin Algorithmic Trading Execution Environment.
+  An RL environment where agents act as automated portfolio managers,
+  executing BTC trades against a realistic procedurally-generated market.
+  Features spread simulation, flash-crash injection, and Sharpe-ratio grading.
+
+author: "OpenEnv Submission"
+tags:
+  - openenv
+  - finance
+  - trading
+  - rl
+  - bitcoin
+  - portfolio-management
+
+license: "MIT"
+
+# ---------------------------------------------------------------------------
+# Server configuration
+# ---------------------------------------------------------------------------
+server:
+  host: "0.0.0.0"
+  port: 7860
+  framework: "fastapi"
+  websocket_path: "/ws"
+  health_path: "/health"
+
+# ---------------------------------------------------------------------------
+# Environment interface
+# ---------------------------------------------------------------------------
+interface:
+  reset_endpoint: "/reset"
+  step_endpoint: "/step"
+  state_endpoint: "/state"
+  grade_endpoint: "/grade"
+
+# ---------------------------------------------------------------------------
+# Action space
+# ---------------------------------------------------------------------------
+action_space:
+  type: "discrete+continuous"
+  description: "Choose trade direction and fraction of available balance to deploy"
+  fields:
+    action_type:
+      type: "enum"
+      values: ["buy", "sell", "hold"]
+      description: "Trading direction"
+    amount:
+      type: "float"
+      range: [0.0, 1.0]
+      description: "Fraction of available balance to deploy (0=nothing, 1=all-in)"
+    limit_price:
+      type: "float"
+      required: false
+      description: "Optional limit price in USD; null triggers a market order"
+
+# ---------------------------------------------------------------------------
+# Observation space
+# ---------------------------------------------------------------------------
+observation_space:
+  type: "structured"
+  description: "Rich market + portfolio + technical-indicator observation"
+  fields:
+    tick:
+      description: "Current market tick: bid, ask, mid, volume, spread_pct, timestamp"
+    portfolio:
+      description: "Portfolio state: fiat_balance, btc_balance, portfolio_value, pnl, drawdown"
+    indicators:
+      description: "Technical indicators: SMA5/20/50, RSI14, MACD, volatility20, price_history"
+    step_num:
+      type: "int"
+      description: "Current step within episode"
+    max_steps:
+      type: "int"
+      description: "Maximum steps before episode terminates"
+    episode_return_pct:
+      type: "float"
+      description: "Cumulative episode return as a percentage"
+    flash_crash_active:
+      type: "bool"
+      description: "Whether a flash crash is currently in progress"
+    done:
+      type: "bool"
+      description: "Whether the episode has ended (always in observation)"
+    reward:
+      type: "float"
+      description: "Reward received at this step (null on reset)"
+
+# ---------------------------------------------------------------------------
+# Tasks
+# ---------------------------------------------------------------------------
+tasks:
+  - id: easy_profitable_baseline
+    name: "Profitable Baseline"
+    difficulty: "easy"
+    max_steps: 100
+    description: >
+      Execute a trading strategy over 100 steps and end with a portfolio value
+      that exceeds the initial balance by at least 1%, without breaching a 30%
+      maximum drawdown limit.
+    grader:
+      score_range: [0.0, 1.0]
+      components:
+        - name: "return_score"
+          weight: 0.6
+          description: "Linear scale: 0→1 for episode return from -5% to +5%"
+        - name: "drawdown_score"
+          weight: 0.4
+          description: "1 - (max_drawdown / 0.30), penalises drawdown breaches"
+      pass_threshold: 0.5
+      pass_criteria: "return >= 1% AND max_drawdown < 30%"
+
+  - id: medium_crash_survival
+    name: "Flash Crash Survival"
+    difficulty: "medium"
+    max_steps: 150
+    description: >
+      Survive a randomly injected flash-crash event (8–18% price drop occurring
+      between step 50–105). Maintain overall profitability and keep max drawdown
+      below 20%.
+    grader:
+      score_range: [0.0, 1.0]
+      components:
+        - name: "drawdown_score"
+          weight: 0.333
+          description: "Full marks if max_drawdown < 10%; linear decay to 0 at 20%"
+        - name: "profit_score"
+          weight: 0.333
+          description: "Linear scale for overall episode return"
+        - name: "crash_behavior_score"
+          weight: 0.333
+          description: "Win-rate proxy for defensive positioning during crash"
+      pass_threshold: 0.4
+      pass_criteria: "survived crash (drawdown < 20%) AND return >= 0%"
+
+  - id: hard_sharpe_optimization
+    name: "Sharpe Ratio Optimisation"
+    difficulty: "hard"
+    max_steps: 200
+    description: >
+      Achieve a Sharpe ratio above 1.0 over 200 steps while managing
+      dynamically widening spreads, flash crash events, and aiming for >2%
+      episode return. Rewards consistent risk-adjusted performance.
+    grader:
+      score_range: [0.0, 1.0]
+      components:
+        - name: "sharpe_score"
+          weight: 0.4
+          description: "Linear scale: Sharpe ratio / 2.0, capped at 1.0"
+        - name: "return_score"
+          weight: 0.3
+          description: "Linear scale: 0→1 for returns from 0% to 5%"
+        - name: "efficiency_score"
+          weight: 0.3
+          description: "win_rate minus fee_waste penalty"
+      pass_threshold: 0.5
+      pass_criteria: "sharpe >= 1.0 AND return >= 2%"
+
+# ---------------------------------------------------------------------------
+# Reward function
+# ---------------------------------------------------------------------------
+reward:
+  type: "dense"
+  description: >
+    Dense reward with partial progress signals at every step.
+    Components: incremental PnL (±5 max), fee penalty, drawdown penalty,
+    crash-survival bonus, and a terminal bonus/penalty based on task completion.
+  range: [-50.0, 50.0]
+  partial_progress: true
+  terminal_bonus: true
+
+# ---------------------------------------------------------------------------
+# Episode boundaries
+# ---------------------------------------------------------------------------
+episode:
+  early_termination:
+    - condition: "max_drawdown >= 0.30 (0.20 for medium task)"
+      description: "Margin/risk limit breached"
+    - condition: "portfolio_value < $100"
+      description: "Near-bankruptcy"
+  natural_termination: "step_num >= max_steps"
+  reset_on_done: true
+
+# ---------------------------------------------------------------------------
+# Docker / deployment
+# ---------------------------------------------------------------------------
+docker:
+  expose_port: 7860
+  base_image: "python:3.11-slim"
+  health_check: "GET /health"
+
+huggingface:
+  space_hardware: "cpu-basic"
+  sdk: "docker"
+  tags:
+    - openenv
+    - finance
+    - rl
+    - trading

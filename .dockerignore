@@ -1,0 +1,15 @@
+# .dockerignore — keep Docker image lean
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.git/
+.gitignore
+.env
+*.md
+tests/
+outputs/
+*.log
+.pytest_cache/
+dist/
+build/
