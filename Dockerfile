@@ -27,7 +27,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # ── Copy application source ───────────────────────────────────────────────────
-COPY models.py environment.py app.py openenv.yaml ./
+COPY server/ ./server/
+COPY models.py environment.py openenv.yaml ./
 
 # ── Ownership ─────────────────────────────────────────────────────────────────
 RUN chown -R appuser:appuser /app
