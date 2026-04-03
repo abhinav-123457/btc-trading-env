@@ -287,12 +287,11 @@ Market data: **real Binance BTCUSDT hourly prices** (5000 candles, cached locall
 }
 ```
 
-| Task | Difficulty | Rule-Based Agent | LLM Agent (GPT-4o-mini) |
+| Task | Difficulty | Rule-Based Agent | LLM Agent |
 |---|---|---|---|
-| `easy_profitable_baseline` | ⭐ Easy | **0.69** | ~0.82+ |
-| `medium_crash_survival` | ⭐⭐ Medium | **0.70** | ~0.78+ |
-| `hard_sharpe_optimization` | ⭐⭐⭐ Hard | **0.30** | ~0.52+ |
-| **Average** | | **0.56** | **~0.71** |
+| `easy_profitable_baseline` | ⭐ Easy   | 0.69       | **0.86 ✓ PASS** (llama-4-scout) |
+| `medium_crash_survival`    | ⭐⭐ Medium | 0.70       | **0.81 ✓ PASS** (llama-4-scout) |
+| `hard_sharpe_optimization` | ⭐⭐⭐ Hard  | 0.30       | **0.32** (100/200 steps only)   |
 
 > Scores are fully reproducible: `python inference.py` with `seed=42`
 > always produces identical values. The rule-based fallback activates
