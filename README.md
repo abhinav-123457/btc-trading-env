@@ -292,6 +292,11 @@ Market data: **real Binance BTCUSDT hourly prices** (5000 candles, cached locall
 | `easy_profitable_baseline` | ⭐ Easy   | 0.69       | **0.86 ✓ PASS** (llama-4-scout) |
 | `medium_crash_survival`    | ⭐⭐ Medium | 0.70       | **0.81 ✓ PASS** (llama-4-scout) |
 | `hard_sharpe_optimization` | ⭐⭐⭐ Hard  | 0.30       | **0.32** (100/200 steps only)   |
+  Average: 0.6605
+| `easy_profitable_baseline` | ⭐ Easy   | 0.69       | **0.70 Fail** (llama-3.1-8b) |
+| `medium_crash_survival`    | ⭐⭐ Medium | 0.70       | **0.50 Fail** (llama-3.1-8b) |
+| `hard_sharpe_optimization` | ⭐⭐⭐ Hard  | 0.30       | **0.32** (100/200 steps only)   |
+  Average: 0.4558
 
 > Scores are fully reproducible: `python inference.py` with `seed=42`
 > always produces identical values. The rule-based fallback activates
