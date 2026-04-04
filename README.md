@@ -306,15 +306,15 @@ Market data: **real Binance BTCUSDT hourly prices** (5000 candles, cached locall
 ---
 
 ## 📁 Project Structure
-
 ```
 btc-trading-env/
 ├── models.py          # Pydantic models: Action, Observation, State, GraderResult
 ├── environment.py     # Core logic: MarketSimulator, MatchingEngine, Graders
-├── app.py             # FastAPI server: /reset, /step, /state, /grade, /ws
+├── server/
+│   └── app.py         # FastAPI server: /reset, /step, /state, /grade, /ws
 ├── openenv.yaml       # OpenEnv manifest
 ├── inference.py       # Baseline evaluation script (OpenAI client)
-├── btc_prices.csv     # Cached real Binance BTCUSDT hourly prices (auto-generated)
+├── btc_prices.csv     # Cached real Binance BTCUSDT hourly prices
 ├── requirements.txt   # Python dependencies
 ├── Dockerfile         # Container definition for HF Spaces
 └── README.md          # This file
