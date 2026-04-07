@@ -194,7 +194,7 @@ Dense reward at every step with partial progress signals:
 ### Local (Python)
 
 ```bash
-git clone https://huggingface.co/spaces/YOUR_NAME/btc-trading-env
+git clone https://huggingface.co/spaces/Abhii2005/btc-trading-env
 cd btc-trading-env
 pip install -r requirements.txt
 python app.py   # starts on http://localhost:7860
