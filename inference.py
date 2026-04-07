@@ -228,6 +228,7 @@ def run_episode(
     step = 0
     total_reward = 0.0
     done = False
+    print(f"[START] task={task_id}", flush=True)
 
     if verbose:
         print(f"\n{'='*60}")
@@ -245,6 +246,7 @@ def run_episode(
         obs_dict = obs.model_dump()
         total_reward += reward
         step += 1
+        print(f"[STEP] step={step} reward={reward:.4f}", flush=True)
 
         if verbose and step % 20 == 0:
             p = obs_dict.get("portfolio", {})
@@ -257,7 +259,7 @@ def run_episode(
 
     # Grade the episode
     grade = env.grade_episode()
-
+    print(f"[END] task={task_id} score={grade.score:.4f} steps={step}", flush=True)
     if verbose:
         print(f"\n  --- Episode Summary ---")
         print(f"  Steps completed : {step}")
