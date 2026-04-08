@@ -29,6 +29,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 # ── Copy application source ───────────────────────────────────────────────────
 COPY server/ ./server/
 COPY models.py environment.py openenv.yaml ./
+# inference.py must be at /app/inference.py for the competition validator
+COPY inference.py ./
+COPY __init__.py ./
+# Pre-cached BTC prices — avoids Binance API call on cold start
+COPY btc_prices.csv ./
 
 # ── Ownership ─────────────────────────────────────────────────────────────────
 RUN chown -R appuser:appuser /app
@@ -42,5 +47,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:7860/health || exit 1
 
 # ── Start server ──────────────────────────────────────────────────────────────
+# PYTHONPATH=/app ensures environment.py and models.py are importable from
+# server/app.py regardless of working directory.
+# We run from /app and pass the dotted module path "server.app:app".
+ENV PYTHONPATH=/app
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860", \
      "--workers", "1", "--log-level", "info"]
