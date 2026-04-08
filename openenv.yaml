@@ -10,7 +10,7 @@ description: >
   executing BTC trades against a realistic procedurally-generated market.
   Features spread simulation, flash-crash injection, and Sharpe-ratio grading.
 
-author: "OpenEnv Submission"
+author: "Abhinav Shakya"
 tags:
   - openenv
   - finance
