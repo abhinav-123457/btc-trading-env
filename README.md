@@ -312,6 +312,7 @@ btc-trading-env/
 ├── environment.py     # Core logic: MarketSimulator, MatchingEngine, Graders
 ├── server/
 │   └── app.py         # FastAPI server: /reset, /step, /state, /grade, /ws
+│   └── ui.html        # Ui for the hugging face space
 ├── openenv.yaml       # OpenEnv manifest
 ├── inference.py       # Baseline evaluation script (OpenAI client)
 ├── btc_prices.csv     # Cached real Binance BTCUSDT hourly prices
