@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BTC Trading OpenEnv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#030810; --panel:#070f1c; --border:#0d2035; --border2:#112840;
+    --glow:#00d4ff; --glow2:#00ff88; --warn:#ffcc00;
+    --text:#a8d8ea; --muted:#3d6b82; --dim:#1a3a52;
+    --green:#00ff88; --red:#ff3355; --amber:#ffaa00;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:'IBM Plex Mono',monospace;
+    background:var(--bg); color:var(--text);
+    min-height:100vh; overflow-x:hidden;
+  }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,.015) 2px,rgba(0,212,255,.015) 4px);
+  }
+  body::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  .wrap { position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:0 16px 40px; }
+
+  /* HEADER */
+  .header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 0 16px; border-bottom:1px solid var(--border2);
+    margin-bottom:20px; flex-wrap:wrap; gap:12px;
+  }
+  .logo {
+    font-family:'Orbitron',sans-serif; font-size:1.4rem; font-weight:900;
+    letter-spacing:.08em; color:var(--glow);
+    text-shadow:0 0 20px rgba(0,212,255,.6),0 0 40px rgba(0,212,255,.3);
+  }
+  .logo span { color:var(--glow2); }
+  .sbar { display:flex; align-items:center; gap:12px; font-size:.72rem; color:var(--muted); flex-wrap:wrap; }
+  .dot {
+    width:7px; height:7px; border-radius:50%;
+    background:var(--glow2); box-shadow:0 0 8px var(--glow2);
+    animation:pulse 2s ease-in-out infinite;
+    display:inline-block; margin-right:5px;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+  .badge {
+    padding:2px 10px; border-radius:2px; font-size:.68rem;
+    font-weight:500; letter-spacing:.1em; text-transform:uppercase; border:1px solid;
+  }
+  .bok  { color:var(--glow2); border-color:var(--glow2); background:rgba(0,255,136,.07); }
+  .bwarn{ color:var(--warn);  border-color:var(--warn);  background:rgba(255,204,0,.07); }
+  .bblue{ color:var(--glow);  border-color:var(--glow);  background:rgba(0,212,255,.07); }
+
+  /* TICKER */
+  .ticker-wrap {
+    border:1px solid var(--border2); border-radius:4px; overflow:hidden;
+    background:var(--panel); margin-bottom:16px; height:34px; display:flex; align-items:center;
+  }
+  .ticker-lbl {
+    padding:0 12px; font-family:'Orbitron',sans-serif; font-size:.58rem;
+    color:var(--glow); white-space:nowrap; border-right:1px solid var(--border2);
+    height:100%; display:flex; align-items:center; letter-spacing:.1em;
+  }
+  .ticker-content { flex:1; overflow:hidden; height:100%; }
+  .ticker-inner {
+    display:flex; align-items:center; height:100%;
+    animation:ticker 30s linear infinite; white-space:nowrap; padding-left:100%;
+  }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+  .ti { margin-right:40px; font-size:.7rem; color:var(--muted); }
+  .ti strong { color:var(--glow2); margin-right:4px; }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  @media(max-width:700px){ .stats-row{grid-template-columns:repeat(2,1fr)} }
+  .sc {
+    background:var(--panel); border:1px solid var(--border2);
+    border-radius:4px; padding:12px 14px; position:relative; overflow:hidden;
+  }
+  .sc::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--glow2),var(--glow)); opacity:.5;
+  }
+  .sv {
+    font-family:'Orbitron',sans-serif; font-size:1.6rem; font-weight:700;
+    color:var(--glow); text-shadow:0 0 12px rgba(0,212,255,.4); line-height:1; margin-bottom:4px;
+  }
+  .sl { font-size:.62rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+
+  /* TASK CARDS */
+  .task-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  @media(max-width:700px){ .task-grid{grid-template-columns:1fr} }
+  .tc {
+    background:var(--panel); border:1px solid var(--border2);
+    border-radius:4px; padding:14px; cursor:pointer; transition:all .2s; position:relative; overflow:hidden;
+  }
+  .tc::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .tc.easy::before   { background:var(--green); }
+  .tc.medium::before { background:var(--amber); }
+  .tc.hard::before   { background:var(--red); }
+  .tc:hover { border-color:var(--glow); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,212,255,.1); }
+  .tc.active{ border-color:var(--glow); background:rgba(0,212,255,.05); }
+  .tdiff { font-family:'Orbitron',sans-serif; font-size:.6rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; margin-bottom:6px; }
+  .de{color:var(--green)} .dm{color:var(--amber)} .dh{color:var(--red)}
+  .tn { font-size:.8rem; color:var(--text); margin-bottom:4px; }
+  .tm { font-size:.65rem; color:var(--muted); }
+
+  /* LAYOUT */
+  .main-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .bot-grid  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media(max-width:900px){ .main-grid{grid-template-columns:1fr} .bot-grid{grid-template-columns:1fr} }
+
+  /* PANELS */
+  .panel { background:var(--panel); border:1px solid var(--border2); border-radius:4px; overflow:hidden; position:relative; }
+  .panel::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg,transparent,var(--glow),transparent); opacity:.4;
+  }
+  .ph {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--border); background:rgba(0,212,255,.03);
+    flex-wrap:wrap; gap:6px;
+  }
+  .pt { font-family:'Orbitron',sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--glow); }
+  .pb { padding:14px; }
+
+  /* CONTROLS */
+  .cg { margin-bottom:14px; }
+  .cg label { display:block; font-size:.65rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+  select, input[type=number] {
+    width:100%; background:var(--bg); border:1px solid var(--border2);
+    color:var(--text); padding:8px 10px; font-family:'IBM Plex Mono',monospace;
+    font-size:.82rem; border-radius:2px; outline:none; transition:border-color .2s; appearance:none;
+  }
+  select:focus, input:focus { border-color:var(--glow); box-shadow:0 0 0 2px rgba(0,212,255,.1); }
+  select option { background:#0a1628; }
+
+  .amt-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .av { font-family:'Orbitron',sans-serif; font-size:1.1rem; color:var(--glow); }
+
+  input[type=range] {
+    width:100%; appearance:none; height:3px; background:var(--dim);
+    border-radius:2px; outline:none; margin:8px 0; border:none; padding:0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--glow); box-shadow:0 0 8px var(--glow); cursor:pointer;
+  }
+
+  .divider { height:1px; background:var(--border); margin:12px 0 16px; }
+
+  /* BUTTONS */
+  .bfull {
+    width:100%; padding:11px; margin-bottom:8px;
+    font-family:'Orbitron',sans-serif; font-size:.65rem; font-weight:700;
+    letter-spacing:.15em; text-transform:uppercase; border:1px solid;
+    border-radius:2px; cursor:pointer; transition:all .15s;
+  }
+  .bfull:active { transform:scale(.98); }
+  .breset { color:var(--glow); border-color:var(--glow); background:rgba(0,212,255,.05); }
+  .breset:hover { background:rgba(0,212,255,.12); box-shadow:0 0 12px rgba(0,212,255,.3); }
+
+  .btn-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; }
+  .btn {
+    padding:10px 8px;
+    font-family:'Orbitron',sans-serif; font-size:.62rem; font-weight:700;
+    letter-spacing:.1em; text-transform:uppercase; border:1px solid;
+    border-radius:2px; cursor:pointer; transition:all .15s;
+  }
+  .btn:active { transform:scale(.97); }
+  .bbuy  { color:var(--green); border-color:var(--green); background:rgba(0,255,136,.05); }
+  .bbuy:hover  { background:rgba(0,255,136,.12); box-shadow:0 0 12px rgba(0,255,136,.3); }
+  .bsell { color:var(--red);   border-color:var(--red);   background:rgba(255,51,85,.05); }
+  .bsell:hover { background:rgba(255,51,85,.12); box-shadow:0 0 12px rgba(255,51,85,.3); }
+  .bhold { color:var(--amber); border-color:var(--amber); background:rgba(255,170,0,.05); }
+  .bhold:hover { background:rgba(255,170,0,.12); box-shadow:0 0 12px rgba(255,170,0,.3); }
+  .bstate{ color:var(--text);  border-color:var(--dim);   background:rgba(255,255,255,.02); }
+  .bstate:hover{ border-color:var(--muted); }
+  .bgrade{ color:var(--glow2); border-color:var(--glow2); background:rgba(0,255,136,.05); }
+  .bgrade:hover{ background:rgba(0,255,136,.12); box-shadow:0 0 12px rgba(0,255,136,.3); }
+
+  /* RESPONSE */
+  .resp-hdr {
+    display:flex; align-items:center; gap:10px; padding:8px 14px;
+    border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  .slbl { color:var(--muted); font-size:.62rem; letter-spacing:.08em; text-transform:uppercase; }
+  #reward-d { font-family:'Orbitron',sans-serif; font-size:.8rem; color:var(--glow2); min-width:60px; }
+  #done-d { font-size:.72rem; padding:2px 9px; border-radius:2px; border:1px solid; }
+  .df { color:var(--glow2); border-color:rgba(0,255,136,.35); }
+  .dt { color:var(--red);   border-color:rgba(255,51,85,.35); }
+
+  pre#jout {
+    padding:14px; font-family:'Share Tech Mono',monospace; font-size:.75rem;
+    line-height:1.65; color:#5d9db8; max-height:360px; min-height:180px;
+    overflow-y:auto; white-space:pre-wrap; word-break:break-all;
+  }
+  .key  { color:#4db8d4; }
+  .str  { color:#7dd87d; }
+  .num  { color:#e8b86d; }
+  .bool { color:#cc88ff; }
+  .null { color:#888;    }
+
+  /* OBS DASHBOARD */
+  .obs-card { background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:8px 10px; }
+  .obs-lbl { font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .obs-val { font-family:'Orbitron',sans-serif; font-size:.85rem; font-weight:700; color:var(--glow); }
+  @media(max-width:700px){ #obs-panel .pb div[style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important} }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--dim); border-radius:2px; }
+
+  /* API TABLE */
+  .ep-list { font-size:.75rem; }
+  .ep-row { display:flex; align-items:baseline; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+  .ep-row:last-child { border-bottom:none; }
+  .mth {
+    font-family:'Orbitron',sans-serif; font-size:.58rem; font-weight:700;
+    letter-spacing:.1em; padding:2px 7px; border-radius:2px; min-width:46px;
+    text-align:center; border:1px solid;
+  }
+  .mget  { color:var(--glow);  border-color:rgba(0,212,255,.4);  background:rgba(0,212,255,.06);  }
+  .mpost { color:var(--green); border-color:rgba(0,255,136,.4);  background:rgba(0,255,136,.06);  }
+  .mws   { color:#bf8fff;      border-color:rgba(191,143,255,.4); background:rgba(191,143,255,.06); }
+  .ep-path { color:var(--text); font-family:'Share Tech Mono',monospace; }
+  .ep-desc { color:var(--muted); font-size:.68rem; margin-left:auto; }
+
+  /* CODE BLOCKS */
+  .cb {
+    background:var(--bg); border:1px solid var(--border2); border-radius:3px;
+    padding:12px 14px; font-family:'Share Tech Mono',monospace; font-size:.72rem;
+    line-height:1.7; color:#5d9db8; overflow-x:auto; margin-top:8px; position:relative;
+  }
+  .cb .c { color:var(--muted); }
+  .cb .k { color:#4db8d4; }
+  .cb .s { color:#7dd87d; }
+  .cb .n { color:#e8b86d; }
+  .cpbtn {
+    position:absolute; top:8px; right:8px; background:var(--dim);
+    border:1px solid var(--border2); color:var(--muted); padding:3px 8px;
+    font-size:.6rem; font-family:'Orbitron',sans-serif; border-radius:2px;
+    cursor:pointer; transition:all .15s; letter-spacing:.05em;
+  }
+  .cpbtn:hover { background:var(--border2); color:var(--text); }
+
+  /* TOAST */
+  #toast {
+    position:fixed; bottom:20px; right:20px;
+    background:var(--panel); border:1px solid var(--glow); color:var(--glow);
+    padding:10px 18px; font-size:.75rem; border-radius:3px;
+    box-shadow:0 0 20px rgba(0,212,255,.2); z-index:9998;
+    transform:translateY(60px); opacity:0; transition:all .25s;
+    font-family:'IBM Plex Mono',monospace; pointer-events:none;
+  }
+  #toast.show { transform:translateY(0); opacity:1; }
+
+  /* LOADING overlay on response panel */
+  #loading-indicator {
+    display:none; position:absolute; inset:0;
+    background:rgba(3,8,16,.75); align-items:center; justify-content:center;
+    font-family:'Orbitron',sans-serif; font-size:.7rem; color:var(--glow);
+    letter-spacing:.15em; z-index:10;
+  }
+  #loading-indicator.show { display:flex; }
+  .spin {
+    width:14px; height:14px; border:2px solid var(--dim); border-top-color:var(--glow);
+    border-radius:50%; animation:spin .7s linear infinite; margin-right:8px;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* FLASH */
+  @keyframes flashAnim { 0%{background:rgba(0,212,255,.12)} 100%{background:transparent} }
+  .flash { animation:flashAnim .35s ease; }
+
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .panel,.sc,.tc { animation:fadeIn .35s ease both; }
+
+  .footer {
+    text-align:center; padding:20px 0 0; border-top:1px solid var(--border);
+    font-size:.65rem; color:var(--muted); letter-spacing:.08em;
+  }
+  .footer a { color:var(--glow); text-decoration:none; }
+  .footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">&#8383;TC&nbsp;<span>OPENENV</span></div>
+    <div class="sbar">
+      <span><span class="dot"></span>SERVER ONLINE</span>
+      <span class="badge bok">OPENENV SPEC v1.0</span>
+      <span class="badge bblue">3 TASKS</span>
+      <span class="badge bwarn">MIT LICENSE</span>
+      <span id="uptime-b" class="badge bok">UPTIME 0s</span>
+    </div>
+  </div>
+
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker-lbl">LIVE&nbsp;FEED</div>
+    <div class="ticker-content">
+      <div class="ticker-inner">
+        <span class="ti"><strong>BTC/USD</strong>Algorithmic Trading Environment</span>
+        <span class="ti"><strong>TASK&nbsp;1</strong>Profitable Baseline &middot; 100 Steps &middot; EASY</span>
+        <span class="ti"><strong>TASK&nbsp;2</strong>Flash Crash Survival &middot; 150 Steps &middot; MEDIUM</span>
+        <span class="ti"><strong>TASK&nbsp;3</strong>Sharpe Optimisation &middot; 200 Steps &middot; HARD</span>
+        <span class="ti"><strong>REWARD</strong>Dense &middot; Partial Progress &middot; Terminal Bonus</span>
+        <span class="ti"><strong>FEES</strong>Taker 0.10% &middot; Maker 0.05%</span>
+        <span class="ti"><strong>DATA</strong>Binance BTCUSDT 1h &middot; GBM Fallback</span>
+        <!-- duplicate for seamless loop -->
+        <span class="ti"><strong>BTC/USD</strong>Algorithmic Trading Environment</span>
+        <span class="ti"><strong>TASK&nbsp;1</strong>Profitable Baseline &middot; 100 Steps &middot; EASY</span>
+        <span class="ti"><strong>TASK&nbsp;2</strong>Flash Crash Survival &middot; 150 Steps &middot; MEDIUM</span>
+        <span class="ti"><strong>TASK&nbsp;3</strong>Sharpe Optimisation &middot; 200 Steps &middot; HARD</span>
+        <span class="ti"><strong>REWARD</strong>Dense &middot; Partial Progress &middot; Terminal Bonus</span>
+        <span class="ti"><strong>FEES</strong>Taker 0.10% &middot; Maker 0.05%</span>
+        <span class="ti"><strong>DATA</strong>Binance BTCUSDT 1h &middot; GBM Fallback</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="sc"><div class="sv" id="st-resets">0</div><div class="sl">Episodes Reset</div></div>
+    <div class="sc"><div class="sv" id="st-steps">0</div><div class="sl">Total Steps</div></div>
+    <div class="sc"><div class="sv" id="st-ws">0</div><div class="sl">WS Sessions</div></div>
+    <div class="sc"><div class="sv">3</div><div class="sl">Graded Tasks</div></div>
+  </div>
+
+  <!-- TASK CARDS -->
+  <div class="task-grid">
+    <div class="tc easy active" id="tc-easy" onclick="selTask('easy_profitable_baseline','tc-easy')">
+      <div class="tdiff de">&#11041; Easy</div>
+      <div class="tn">Profitable Baseline</div>
+      <div class="tm">100 steps &middot; Return &ge;1% &middot; DD &lt;30%</div>
+    </div>
+    <div class="tc medium" id="tc-medium" onclick="selTask('medium_crash_survival','tc-medium')">
+      <div class="tdiff dm">&#11041; Medium</div>
+      <div class="tn">Flash Crash Survival</div>
+      <div class="tm">150 steps &middot; Survive crash &middot; DD &lt;20%</div>
+    </div>
+    <div class="tc hard" id="tc-hard" onclick="selTask('hard_sharpe_optimization','tc-hard')">
+      <div class="tdiff dh">&#11041; Hard</div>
+      <div class="tn">Sharpe Optimisation</div>
+      <div class="tm">200 steps &middot; Sharpe &ge;0.5 &middot; Return &ge;2%</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- CONTROLS -->
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">&#x2316; Environment Controls</span>
+        <span id="ep-badge" class="badge bwarn">NO EPISODE</span>
+      </div>
+      <div class="pb">
+        <div class="cg">
+          <label>Active Task</label>
+          <select id="task-sel">
+            <option value="easy_profitable_baseline">easy_profitable_baseline</option>
+            <option value="medium_crash_survival">medium_crash_survival</option>
+            <option value="hard_sharpe_optimization">hard_sharpe_optimization</option>
+          </select>
+        </div>
+        <div class="cg">
+          <label>Seed (blank = random)</label>
+          <input type="number" id="seed-in" placeholder="e.g. 42" value="42"/>
+        </div>
+        <button class="bfull breset" id="btn-reset" onclick="doReset()">&#10227;&nbsp; RESET EPISODE</button>
+        <div class="divider"></div>
+        <div class="cg">
+          <div class="amt-row">
+            <label style="margin:0">Amount</label>
+            <span class="av" id="amt-lbl">0.30</span>
+          </div>
+          <input type="range" id="amt-sl" min="0" max="1" step="0.05" value="0.30"
+                 oninput="document.getElementById('amt-lbl').textContent=parseFloat(this.value).toFixed(2)"/>
+          <div style="display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-top:2px">
+            <span>0.00</span><span>fraction of balance</span><span>1.00</span>
+          </div>
+        </div>
+        <div class="cg">
+          <label>Limit Price (blank = market order)</label>
+          <input type="number" id="lmt-in" placeholder="null &rarr; market order"/>
+        </div>
+        <div class="btn-row">
+          <button class="btn bbuy"  id="btn-buy"  onclick="doStep('buy')">&#9650; BUY</button>
+          <button class="btn bsell" id="btn-sell" onclick="doStep('sell')">&#9660; SELL</button>
+          <button class="btn bhold" id="btn-hold" onclick="doStep('hold')">&#9670; HOLD</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn bstate" id="btn-state" onclick="doState()">&#8865; STATE</button>
+          <button class="btn bgrade" id="btn-grade" onclick="doGrade()" style="grid-column:span 2">&#10022; GRADE EPISODE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESPONSE -->
+    <div class="panel" style="position:relative">
+      <div class="ph">
+        <span class="pt">&#9672; Raw JSON Response</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="slbl">Reward</span>
+          <span id="reward-d">&mdash;</span>
+          <span class="slbl">Done</span>
+          <span id="done-d" class="df">false</span>
+        </div>
+      </div>
+      <div id="loading-indicator"><div class="spin"></div>PROCESSING...</div>
+      <pre id="jout"><span class="null">// Click RESET EPISODE to start.
+// Then use BUY / SELL / HOLD to step.
+// The full API response appears here.
+
+{
+  "observation": { ... },
+  "reward": null,
+  "done": false
+}</span></pre>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <!-- OBSERVATION DASHBOARD -->
+  <div class="panel" id="obs-panel" style="margin-bottom:16px;opacity:.4;transition:opacity .3s">
+    <div class="ph">
+      <span class="pt">&#9685; Live Observation</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="slbl">Step</span><span id="obs-step" style="font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--glow)">—/—</span>
+        <span class="slbl" style="margin-left:6px">Task</span><span id="obs-task" style="font-size:.7rem;color:var(--text)">—</span>
+        <span id="crash-badge" style="display:none;padding:2px 8px;border-radius:2px;font-size:.62rem;font-weight:700;letter-spacing:.1em;color:var(--red);border:1px solid var(--red);background:rgba(255,51,85,.08)">&#9888; FLASH CRASH</span>
+      </div>
+    </div>
+    <div class="pb" style="padding:12px 14px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <div class="obs-card">
+          <div class="obs-lbl">Portfolio Value</div>
+          <div class="obs-val" id="obs-portval">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Return %</div>
+          <div class="obs-val" id="obs-return" style="color:var(--glow2)">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Max Drawdown</div>
+          <div class="obs-val" id="obs-dd" style="color:var(--amber)">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">BTC Balance</div>
+          <div class="obs-val" id="obs-btc">—</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px">
+        <div class="obs-card">
+          <div class="obs-lbl">RSI 14</div>
+          <div class="obs-val" id="obs-rsi">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">SMA 5</div>
+          <div class="obs-val" id="obs-sma5">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">SMA 20</div>
+          <div class="obs-val" id="obs-sma20">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">MACD</div>
+          <div class="obs-val" id="obs-macd">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Volatility 20</div>
+          <div class="obs-val" id="obs-vol">—</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="obs-card">
+          <div class="obs-lbl">Mid Price</div>
+          <div class="obs-val" id="obs-mid">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Spread %</div>
+          <div class="obs-val" id="obs-spread">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Total Trades</div>
+          <div class="obs-val" id="obs-trades">—</div>
+        </div>
+        <div class="obs-card">
+          <div class="obs-lbl">Fiat Balance</div>
+          <div class="obs-val" id="obs-fiat">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bot-grid">
+
+    <!-- QUICK START spans 2 cols -->
+    <div class="panel" style="grid-column:span 2">
+      <div class="ph">
+        <span class="pt">&#9889; Quick Start</span>
+        <a href="/docs" style="font-size:.65rem;color:var(--glow)">Swagger UI &#8594;</a>
+      </div>
+      <div class="pb">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:.65rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Python</div>
+            <div class="cb" id="py-code">
+              <button class="cpbtn" onclick="cpCode('py-code')">COPY</button>
+<span class="c"># pip install httpx</span>
+<span class="k">import</span> httpx
+<span class="c"># Reset</span>
+r = httpx.post(<span class="s">"/reset"</span>, json={<span class="s">"task_id"</span>: <span class="s">"easy_profitable_baseline"</span>, <span class="s">"seed"</span>: <span class="n">42</span>})
+<span class="c"># Step</span>
+r = httpx.post(<span class="s">"/step"</span>, json={<span class="s">"action_type"</span>: <span class="s">"buy"</span>, <span class="s">"amount"</span>: <span class="n">0.3</span>})
+<span class="c"># Grade</span>
+r = httpx.post(<span class="s">"/grade"</span>)
+print(r.json())
+            </div>
+          </div>
+          <div>
+            <div style="font-size:.65rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">cURL</div>
+            <div class="cb" id="curl-code">
+              <button class="cpbtn" onclick="cpCode('curl-code')">COPY</button>
+<span class="c"># Reset</span>
+curl -X POST /reset \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"task_id":"easy_profitable_baseline","seed":42}'</span>
+<span class="c"># Step</span>
+curl -X POST /step \
+  -d <span class="s">'{"action_type":"buy","amount":0.3}'</span>
+<span class="c"># Grade</span>
+curl -X POST /grade
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API REFERENCE -->
+    <div class="panel">
+      <div class="ph"><span class="pt">&#8862; API Endpoints</span></div>
+      <div class="pb">
+        <div class="ep-list">
+          <div class="ep-row"><span class="mth mget">GET</span><span class="ep-path">/health</span><span class="ep-desc">Health probe</span></div>
+          <div class="ep-row"><span class="mth mpost">POST</span><span class="ep-path">/reset</span><span class="ep-desc">Start episode</span></div>
+          <div class="ep-row"><span class="mth mpost">POST</span><span class="ep-path">/step</span><span class="ep-desc">Execute action</span></div>
+          <div class="ep-row"><span class="mth mget">GET</span><span class="ep-path">/state</span><span class="ep-desc">Episode state</span></div>
+          <div class="ep-row"><span class="mth mpost">POST</span><span class="ep-path">/grade</span><span class="ep-desc">Grade episode</span></div>
+          <div class="ep-row"><span class="mth mget">GET</span><span class="ep-path">/tasks</span><span class="ep-desc">List tasks</span></div>
+          <div class="ep-row"><span class="mth mget">GET</span><span class="ep-path">/metrics</span><span class="ep-desc">Live metrics</span></div>
+          <div class="ep-row"><span class="mth mws">WS</span><span class="ep-path">/ws</span><span class="ep-desc">Streaming</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /bot-grid -->
+
+  <div class="footer">
+    BTC Trading OpenEnv &nbsp;&middot;&nbsp; MIT License &nbsp;&middot;&nbsp;
+    Binance BTCUSDT 1h data &nbsp;&middot;&nbsp;
+    <a href="/docs">Swagger UI</a> &nbsp;&middot;&nbsp;
+    <a href="/redoc">ReDoc</a>
+  </div>
+
+</div><!-- /wrap -->
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+var curTask = 'easy_profitable_baseline';
+var epActive = false;
+var serverStartTime = Date.now(); // approximate; updated from /metrics
+
+// ── Uptime (runs every second, no server call) ─────────────────────────────────
+setInterval(function() {
+  var s = Math.floor((Date.now() - serverStartTime) / 1000);
+  var h = Math.floor(s / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  var sec = s % 60;
+  var lbl = h > 0 ? (h + 'h ' + m + 'm') : (m > 0 ? (m + 'm ' + sec + 's') : (sec + 's'));
+  document.getElementById('uptime-b').textContent = 'UPTIME ' + lbl;
+}, 1000);
+
+// ── Live metrics (every 5 seconds) ────────────────────────────────────────────
+function refreshMetrics() {
+  fetch('/metrics')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('st-resets').textContent = d.total_resets || 0;
+      document.getElementById('st-steps').textContent  = d.total_steps  || 0;
+      document.getElementById('st-ws').textContent     = d.total_ws_sessions || 0;
+    })
+    .catch(function() {});
+}
+refreshMetrics();
+setInterval(refreshMetrics, 5000);
+
+// ── Task selection ─────────────────────────────────────────────────────────────
+function selTask(taskId, cardId) {
+  curTask = taskId;
+  document.getElementById('task-sel').value = taskId;
+  ['tc-easy','tc-medium','tc-hard'].forEach(function(id) {
+    document.getElementById(id).classList.remove('active');
+  });
+  document.getElementById(cardId).classList.add('active');
+}
+
+document.getElementById('task-sel').addEventListener('change', function() {
+  curTask = this.value;
+  var map = {
+    'easy_profitable_baseline': 'tc-easy',
+    'medium_crash_survival':    'tc-medium',
+    'hard_sharpe_optimization': 'tc-hard'
+  };
+  ['tc-easy','tc-medium','tc-hard'].forEach(function(id) {
+    document.getElementById(id).classList.remove('active');
+  });
+  if (map[curTask]) document.getElementById(map[curTask]).classList.add('active');
+});
+
+// ── JSON syntax highlight ──────────────────────────────────────────────────────
+function hlJson(obj) {
+  var str = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  // escape HTML first
+  str = str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return str.replace(
+    /("(?:\\u[0-9a-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    function(match) {
+      var cls = 'num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'key' : 'str';
+      } else if (/true|false/.test(match)) {
+        cls = 'bool';
+      } else if (/null/.test(match)) {
+        cls = 'null';
+      }
+      return '<span class="' + cls + '">' + match + '</span>';
+    }
+  );
+}
+
+// ── Observation dashboard ──────────────────────────────────────────────────────
+function updateDashboard(data) {
+  var obs = data.observation || data;
+  if (!obs || !obs.portfolio) return;
+  document.getElementById('obs-panel').style.opacity = '1';
+
+  var p = obs.portfolio, ind = obs.indicators || {}, tick = obs.tick || {};
+
+  document.getElementById('obs-step').textContent = (obs.step_num || 0) + '/' + (obs.max_steps || '?');
+  document.getElementById('obs-task').textContent = obs.task_id || '—';
+
+  var crash = document.getElementById('crash-badge');
+  crash.style.display = obs.flash_crash_active ? 'inline-block' : 'none';
+
+  var ret = parseFloat(obs.episode_return_pct || 0);
+  var dd  = parseFloat(p.max_drawdown || 0) * 100;
+
+  document.getElementById('obs-portval').textContent = '$' + parseFloat(p.portfolio_value || 0).toLocaleString('en-US', {maximumFractionDigits:2});
+  var retEl = document.getElementById('obs-return');
+  retEl.textContent = (ret >= 0 ? '+' : '') + ret.toFixed(2) + '%';
+  retEl.style.color = ret >= 0 ? 'var(--green)' : 'var(--red)';
+  var ddEl = document.getElementById('obs-dd');
+  ddEl.textContent = dd.toFixed(2) + '%';
+  ddEl.style.color = dd > 15 ? 'var(--red)' : dd > 8 ? 'var(--amber)' : 'var(--glow2)';
+  document.getElementById('obs-btc').textContent = parseFloat(p.btc_balance || 0).toFixed(5);
+  document.getElementById('obs-fiat').textContent = '$' + parseFloat(p.fiat_balance || 0).toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('obs-trades').textContent = p.total_trades || 0;
+
+  var rsi = parseFloat(ind.rsi_14 || 50);
+  var rsiEl = document.getElementById('obs-rsi');
+  rsiEl.textContent = rsi.toFixed(1);
+  rsiEl.style.color = rsi > 70 ? 'var(--red)' : rsi < 30 ? 'var(--green)' : 'var(--glow)';
+
+  document.getElementById('obs-sma5').textContent  = '$' + parseFloat(ind.sma_5  || 0).toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('obs-sma20').textContent = '$' + parseFloat(ind.sma_20 || 0).toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('obs-macd').textContent  = parseFloat(ind.macd || 0).toFixed(2);
+  document.getElementById('obs-vol').textContent   = parseFloat(ind.volatility_20 || 0).toFixed(4);
+  document.getElementById('obs-mid').textContent   = '$' + parseFloat(tick.mid || 0).toLocaleString('en-US', {maximumFractionDigits:0});
+  document.getElementById('obs-spread').textContent = parseFloat(tick.spread_pct || 0).toFixed(3) + '%';
+}
+
+
+function setOutput(data) {
+  var el = document.getElementById('jout');
+  el.innerHTML = hlJson(data);
+  // flash animation
+  el.classList.remove('flash');
+  void el.offsetWidth; // reflow trigger
+  el.classList.add('flash');
+  updateDashboard(data);
+
+  // reward badge
+  var rw = (data.reward !== undefined && data.reward !== null) ? data.reward
+           : (data.score !== undefined) ? data.score : null;
+  document.getElementById('reward-d').textContent = (rw !== null) ? parseFloat(rw).toFixed(4) : '\u2014';
+
+  // done badge
+  var done = data.done === true;
+  var de = document.getElementById('done-d');
+  de.textContent = String(done);
+  de.className = done ? 'dt' : 'df';
+}
+
+function setLoading(on) {
+  var el = document.getElementById('loading-indicator');
+  if (on) el.classList.add('show');
+  else     el.classList.remove('show');
+}
+
+function setEpActive(v) {
+  epActive = v;
+  var b = document.getElementById('ep-badge');
+  b.textContent = v ? 'EPISODE ACTIVE' : 'NO EPISODE';
+  b.className   = v ? 'badge bok' : 'badge bwarn';
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+var toastTimer = null;
+function toast(msg, color) {
+  var t = document.getElementById('toast');
+  t.textContent   = msg;
+  t.style.color       = color || 'var(--glow)';
+  t.style.borderColor = color || 'var(--glow)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+// ── API helpers ────────────────────────────────────────────────────────────────
+function apiCall(url, method, body, onSuccess) {
+  setLoading(true);
+  var opts = { method: method || 'GET', headers: {} };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  fetch(url, opts)
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || ('HTTP ' + r.status)); });
+      return r.json();
+    })
+    .then(function(data) {
+      setLoading(false);
+      setOutput(data);
+      if (onSuccess) onSuccess(data);
+      refreshMetrics();
+    })
+    .catch(function(err) {
+      setLoading(false);
+      toast('\u2717 ' + err.message, 'var(--red)');
+      setOutput({ error: err.message });
+    });
+}
+
+// ── Button handlers ────────────────────────────────────────────────────────────
+function doReset() {
+  var tid  = document.getElementById('task-sel').value;
+  var sraw = document.getElementById('seed-in').value.trim();
+  var body = { task_id: tid };
+  if (sraw !== '') {
+    var s = parseInt(sraw, 10);
+    if (!isNaN(s)) body.seed = s;
+  }
+  apiCall('/reset', 'POST', body, function() {
+    setEpActive(true);
+    toast('\u27F3 Reset \u2014 ' + tid, 'var(--glow)');
+  });
+}
+
+function doStep(actionType) {
+  if (!epActive) { toast('\u26A0 Call RESET first', 'var(--warn)'); return; }
+  var amt  = parseFloat(document.getElementById('amt-sl').value);
+  var lraw = document.getElementById('lmt-in').value.trim();
+  var body = { action_type: actionType, amount: amt };
+  if (lraw !== '') {
+    var lp = parseFloat(lraw);
+    if (!isNaN(lp)) body.limit_price = lp;
+  }
+  var colors = { buy: 'var(--green)', sell: 'var(--red)', hold: 'var(--amber)' };
+  apiCall('/step', 'POST', body, function(data) {
+    if (data.done) { setEpActive(false); toast('\u25FC Episode complete', 'var(--amber)'); }
+    else toast(actionType.toUpperCase() + ' \u00D7 ' + amt.toFixed(2), colors[actionType]);
+  });
+}
+
+function doState() {
+  apiCall('/state', 'GET', null, function() {
+    toast('\u2291 State fetched', 'var(--text)');
+  });
+}
+
+function doGrade() {
+  apiCall('/grade', 'POST', {}, function(data) {
+    var sc = (data.score !== undefined) ? data.score : null;
+    if (sc !== null) {
+      var col = parseFloat(sc) >= 0.5 ? 'var(--green)' : 'var(--amber)';
+      toast('\u2726 Score: ' + parseFloat(sc).toFixed(4), col);
+    } else {
+      toast('\u2726 Graded', 'var(--glow2)');
+    }
+  });
+}
+
+// ── Copy code ──────────────────────────────────────────────────────────────────
+function cpCode(blockId) {
+  var bl  = document.getElementById(blockId);
+  var txt = bl.innerText.replace(/^COPY\n?/, '').trim();
+  navigator.clipboard.writeText(txt).then(function() {
+    var btn = bl.querySelector('.cpbtn');
+    btn.textContent = 'COPIED';
+    setTimeout(function() { btn.textContent = 'COPY'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>
